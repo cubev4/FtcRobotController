@@ -109,7 +109,7 @@ public class BasicTeleOpMode extends LinearOpMode {
 
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Motors", "front left (%.2f), front right (%.2f)\n" +
+            telemetry.addData("Motors runnning", "front left (%.2f), front right (%.2f)\n" +
                     "back left (%.2f), back right (%.2f)",
                     leftFrontPower,
                     rightFrontPower,
