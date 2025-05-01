@@ -1,121 +1,150 @@
-/* Copyright (c) 2017 FIRST. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted (subject to the limitations in the disclaimer below) provided that
- * the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this list
- * of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * Neither the name of FIRST nor the names of its contributors may be used to endorse or
- * promote products derived from this software without specific prior written permission.
- *
- * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE GRANTED BY THIS
- * LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.Gamepad;
+import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.Range;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import com.qualcomm.robotcore.hardware.Servo;
 
+@TeleOp
 
-/**
- * This file contains an minimal example of a Linear "OpMode". An OpMode is a 'program' that runs in either
- * the autonomous or the teleop period of an FTC match. The names of OpModes appear on the menu
- * of the FTC Driver Station. When an selection is made from the menu, the corresponding OpMode
- * class is instantiated on the Robot Controller and executed.
- *
- * This particular OpMode just executes a basic Tank Drive Teleop for a four wheeled robot
- * It includes all the skeletal structure that all linear OpModes contain.
- *
- * Use Android Studios to Copy this Class, and Paste it into your team's code folder with a new name.
- * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
- */
-
-@TeleOp(name="Basic: Linear OpMode", group="Linear Opmode")
 public class BasicTeleOpMode extends LinearOpMode {
-
-    // Declare OpMode members.
-    private final ElapsedTime runtime = new ElapsedTime();
-
-
     @Override
     public void runOpMode() {
-        telemetry.addData("Status", "Initialized");
-        telemetry.update();
+        DcMotor frontLeftMotor = hardwareMap.dcMotor.get("frontLeftMotor");
+        DcMotor backLeftMotor = hardwareMap.dcMotor.get("backLeftMotor");
+        DcMotor frontRightMotor = hardwareMap.dcMotor.get("frontRightMotor");
+        DcMotor backRightMotor = hardwareMap.dcMotor.get("backRightMotor");
+        DcMotor armMotor1 = hardwareMap.dcMotor.get("armMotor1");
+        DcMotor armMotor2 = hardwareMap.dcMotor.get("armMotor2");
+        DcMotor armExtender1 =hardwareMap.dcMotor.get("armExtender1");
+        DcMotor armExtender2 =hardwareMap.dcMotor.get("armExtender2");
+        Servo activeIntake1 = hardwareMap.get(Servo.class,"activeIntake1");
+        Servo activeIntake2 = hardwareMap.get(Servo.class,"activeIntake2");
 
-        // Initialize the hardware variables. Note that the strings used here as parameters
-        // to 'get' must correspond to the names assigned during the robot configuration
-        // step (using the FTC Robot Controller app on the phone).
-        DcMotor frontLeftDrive = hardwareMap.get(DcMotor.class, "frontLeft");
-        DcMotor frontRightDrive = hardwareMap.get(DcMotor.class, "frontRight");
-        DcMotor backLeftDrive = hardwareMap.get(DcMotor.class, "backLeft");
-        DcMotor backRightDrive = hardwareMap.get(DcMotor.class, "backRight");
+        boolean intakeToggle = false;
 
-        // Most robots need the motor on one side to be reversed to drive forward
-        // Reverse the motor that runs backwards when connected directly to the battery
-        frontLeftDrive.setDirection(DcMotor.Direction.FORWARD);
-        frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
-        backLeftDrive.setDirection(DcMotorSimple.Direction.FORWARD);
-        backRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
+        Gamepad currentGamepad1 = new Gamepad();
+        Gamepad currentGamepad2 = new Gamepad();
 
-        // Wait for the game to start (driver presses PLAY)
+        Gamepad previousGamepad1 = new Gamepad();
+        Gamepad previousGamepad2 = new Gamepad();
+
+        // other initialization code goes here
+
+        // Reverse the right side motors. This may be wrong for your setup.
+        // If your robot moves backwards when commanded to go forwards,
+        // reverse the left side instead.
+        // See the note about this earlier on this page.
+        frontRightMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        backRightMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        armMotor1.setDirection(DcMotorSimple.Direction.REVERSE);
+        armMotor2.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        // Retrieve the IMU from the hardware map
+        IMU imu = hardwareMap.get(IMU.class, "imu");
+        // Adjust the orientation parameters to match your robot
+        IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
+                RevHubOrientationOnRobot.LogoFacingDirection.UP,
+                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD));
+        // Without this, the REV Hub's orientation is assumed to be logo up / USB forward
+        imu.initialize(parameters);
+
         waitForStart();
-        runtime.reset();
 
-        // run until the end of the match (driver presses STOP)
+        if (isStopRequested()) return;
+
         while (opModeIsActive()) {
+            previousGamepad1.copy(currentGamepad1);
+            previousGamepad2.copy(currentGamepad2);
 
-            // Setup a variable for each drive wheel to save power level for telemetry
-            double leftFrontPower;
-            double rightFrontPower;
-            double leftBackPower;
-            double rightBackPower;
+            currentGamepad1.copy(gamepad1);
+            currentGamepad2.copy(gamepad2);
 
-            // Choose to drive using either Tank Mode, or POV Mode
-            // Comment out the method that's not used.  The default below is POV.
+            double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
+            double x = gamepad1.left_stick_x;
+            double rx = gamepad1.right_stick_x;
 
-            // POV Mode uses left stick to go forward, and right stick to turn.
-            // Increase this value to amplify drive speed
-            double DRIVE_SPEED_MULTIPLIER = 1.5;
-            double drive = -gamepad1.left_stick_y * DRIVE_SPEED_MULTIPLIER;
+            // This button choice was made so that it is hard to hit on accident,
+            // it can be freely changed based on preference.
+            // The equivalent button is start on Xbox-style controllers.
+            if (gamepad1.options) {
+                imu.resetYaw();
+            }
 
-            // Increase this value to amplify turn speed
-            double TURN_SPEED_MULTIPLIER = 1.2;
-            double turn  =  gamepad1.right_stick_x * TURN_SPEED_MULTIPLIER;
-            leftFrontPower    = Range.clip(drive + turn, -1.0, 1.0) ;
-            rightFrontPower   = Range.clip(drive - turn, -1.0, 1.0) ;
-            leftBackPower    = Range.clip(drive + turn, -1.0, 1.0) ;
-            rightBackPower   = Range.clip(drive - turn, -1.0, 1.0) ;
+            double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
+            // Rotate the movement direction counter to the bot's rotation
+            double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
+            double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
 
-            // Show the elapsed game time and wheel power.
-            telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Motors runnning", "front left (%.2f), front right (%.2f)\n" +
-                    "back left (%.2f), back right (%.2f)",
-                    leftFrontPower,
-                    rightFrontPower,
-                    leftBackPower,
-                    rightBackPower);
-            telemetry.update();
+            rotX = rotX * 1.1;  // Counteract imperfect strafing
+
+            // Denominator is the largest motor power (absolute value) or 1
+            // This ensures all the powers maintain the same ratio,
+            // but only if at least one is out of the range [-1, 1]
+            double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
+            double frontLeftPower = (rotY + rotX + rx) / denominator;
+            double backLeftPower = (rotY - rotX + rx) / denominator;
+            double frontRightPower = (rotY - rotX - rx) / denominator;
+            double backRightPower = (rotY + rotX - rx) / denominator;
+            double armMotorPower=1;
+            double armExtenderPower=1;
+            // Rising edge detect
+
+            if (currentGamepad1.a && !previousGamepad1.a) {
+                // This will set intakeToggle to true if it was previously false
+                // and intakeToggle to false if it was previously true,
+                // providing a toggling behavior.
+                intakeToggle = !intakeToggle;
+            }
+
+            // Using the toggle variable to control the robot.
+            if (intakeToggle) {
+                activeIntake1.setDirection(Servo.Direction.FORWARD);
+                activeIntake2.setDirection(Servo.Direction.FORWARD);
+                activeIntake1.setPosition(1);
+                activeIntake2.setPosition(1);
+            }
+            else {
+                activeIntake1.setPosition(0);
+                activeIntake2.setPosition(0);
+            }
+
+            if (currentGamepad1.x && !previousGamepad1.x) {
+                // This will set intakeToggle to true if it was previously false
+                // and intakeToggle to false if it was previously true,
+                // providing a toggling behavior.
+                intakeToggle = !intakeToggle;
+            }
+
+// Using the toggle variable to control the robot.
+            if (intakeToggle) {
+                activeIntake1.setDirection(Servo.Direction.REVERSE);
+                activeIntake2.setDirection(Servo.Direction.REVERSE);
+                activeIntake1.setPosition(1);
+                activeIntake2.setPosition(1);
+            }
+            else {
+                activeIntake1.setPosition(0);
+                activeIntake2.setPosition(0);
+            }
+
+// Using the toggle variable to control the robot.
+            frontLeftMotor.setPower(frontLeftPower);
+            backLeftMotor.setPower(backLeftPower);
+            frontRightMotor.setPower(frontRightPower);
+            backRightMotor.setPower(backRightPower);
+            frontRightMotor.setPower(frontRightPower);
+
+            armMotor1.setPower(armMotorPower);
+            armMotor2.setPower(armMotorPower);
+            armExtender1.setPower(armExtenderPower);
+            armExtender2.setPower(armExtenderPower);
         }
     }
 }
