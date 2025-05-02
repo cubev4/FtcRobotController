@@ -34,24 +34,16 @@ public class BasicTeleOpMode extends LinearOpMode {
         Gamepad previousGamepad1 = new Gamepad();
         Gamepad previousGamepad2 = new Gamepad();
 
-        // other initialization code goes here
 
-        // Reverse the right side motors. This may be wrong for your setup.
-        // If your robot moves backwards when commanded to go forwards,
-        // reverse the left side instead.
-        // See the note about this earlier on this page.
         frontRightMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         backRightMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         armMotor1.setDirection(DcMotorSimple.Direction.REVERSE);
         armMotor2.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        // Retrieve the IMU from the hardware map
         IMU imu = hardwareMap.get(IMU.class, "imu");
-        // Adjust the orientation parameters to match your robot
         IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.UP,
                 RevHubOrientationOnRobot.UsbFacingDirection.FORWARD));
-        // Without this, the REV Hub's orientation is assumed to be logo up / USB forward
         imu.initialize(parameters);
 
         waitForStart();
@@ -65,13 +57,10 @@ public class BasicTeleOpMode extends LinearOpMode {
             currentGamepad1.copy(gamepad1);
             currentGamepad2.copy(gamepad2);
 
-            double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
+            double y = -gamepad1.left_stick_y;
             double x = gamepad1.left_stick_x;
             double rx = gamepad1.right_stick_x;
 
-            // This button choice was made so that it is hard to hit on accident,
-            // it can be freely changed based on preference.
-            // The equivalent button is start on Xbox-style controllers.
             if (gamepad1.options) {
                 imu.resetYaw();
             }
@@ -81,29 +70,19 @@ public class BasicTeleOpMode extends LinearOpMode {
             // Rotate the movement direction counter to the bot's rotation
             double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
             double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
-
-            rotX = rotX * 1.1;  // Counteract imperfect strafing
-
-            // Denominator is the largest motor power (absolute value) or 1
-            // This ensures all the powers maintain the same ratio,
-            // but only if at least one is out of the range [-1, 1]
+            rotX = rotX * 1.1;
             double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
             double frontLeftPower = (rotY + rotX + rx) / denominator;
             double backLeftPower = (rotY - rotX + rx) / denominator;
             double frontRightPower = (rotY - rotX - rx) / denominator;
             double backRightPower = (rotY + rotX - rx) / denominator;
-            double armMotorPower=1;
-            double armExtenderPower=1;
-            // Rising edge detect
+            double armMotorPower=0;
+            double armExtenderPower=0;
 
             if (currentGamepad1.a && !previousGamepad1.a) {
-                // This will set intakeToggle to true if it was previously false
-                // and intakeToggle to false if it was previously true,
-                // providing a toggling behavior.
                 intakeToggle = !intakeToggle;
             }
 
-            // Using the toggle variable to control the robot.
             if (intakeToggle) {
                 activeIntake1.setDirection(Servo.Direction.FORWARD);
                 activeIntake2.setDirection(Servo.Direction.FORWARD);
@@ -116,13 +95,9 @@ public class BasicTeleOpMode extends LinearOpMode {
             }
 
             if (currentGamepad1.x && !previousGamepad1.x) {
-                // This will set intakeToggle to true if it was previously false
-                // and intakeToggle to false if it was previously true,
-                // providing a toggling behavior.
                 intakeToggle = !intakeToggle;
             }
 
-// Using the toggle variable to control the robot.
             if (intakeToggle) {
                 activeIntake1.setDirection(Servo.Direction.REVERSE);
                 activeIntake2.setDirection(Servo.Direction.REVERSE);
@@ -134,7 +109,32 @@ public class BasicTeleOpMode extends LinearOpMode {
                 activeIntake2.setPosition(0);
             }
 
-// Using the toggle variable to control the robot.
+            if (gamepad1.left_bumper) {
+                armMotor1.setDirection(DcMotorSimple.Direction.REVERSE);
+                armMotor2.setDirection(DcMotorSimple.Direction.REVERSE);
+                armMotorPower = 1;
+            } else {
+                if(gamepad1.right_bumper) {
+                    armMotor1.setDirection(DcMotorSimple.Direction.FORWARD);
+                    armMotor2.setDirection(DcMotorSimple.Direction.FORWARD);
+                    armMotorPower = 1;
+                } else {
+                    armMotorPower = 0;
+                }
+            }
+            if (gamepad1.left_trigger>0 ) {
+                armExtender1.setDirection(DcMotorSimple.Direction.REVERSE);
+                armExtender2.setDirection(DcMotorSimple.Direction.REVERSE);
+                armExtenderPower= 1;
+            } else {
+                if(gamepad1.right_trigger>0) {
+                    armExtender1.setDirection(DcMotorSimple.Direction.FORWARD);
+                    armExtender2.setDirection(DcMotorSimple.Direction.FORWARD);
+                    armExtenderPower = 1;
+                } else {
+                    armExtenderPower = 0;
+                }
+            }
             frontLeftMotor.setPower(frontLeftPower);
             backLeftMotor.setPower(backLeftPower);
             frontRightMotor.setPower(frontRightPower);
